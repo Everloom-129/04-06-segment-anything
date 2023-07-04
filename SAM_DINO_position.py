@@ -3,6 +3,7 @@ import cv2
 import torch
 import torchvision
 
+import warnings
 import numpy as np
 from PIL import Image
 from glob import glob
@@ -13,7 +14,10 @@ import matplotlib.pyplot as plt
 from groundingdino.util.inference import Model
 from segment_anything import sam_model_registry, SamPredictor
 
+warnings.filterwarnings('ignore')
+
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 # Paths to GroundingDINO and SAM checkpoints
 GROUNDING_DINO_CONFIG_PATH = "/root/autodl-tmp/DINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
@@ -44,7 +48,7 @@ CLASSES = ['person', 'sidewalk']
 output_dir = 'DINOmasked'
 os.makedirs(output_dir, exist_ok=True)
 
-def display_mask(mask, image_path):
+def display_mask(mask, image_path,image):
     # Create a new subplot
     output_path = os.path.join(output_dir, image_path)
     plt.figure(figsize=(16,9))
@@ -52,21 +56,36 @@ def display_mask(mask, image_path):
 
     # Display the original image
     plt.imshow(image_path)
-    plt.set_title('Original Image')
     plt.axis('off')
 
     # Display the mask
-    plt.imshow(mask, cmap='gray')
-
+    # plt.imshow(mask, cmap='gray')
+    show_anns(mask)
     # Display the plot
     plt.savefig(output_path)
     plt.close()
 
+def show_anns(anns):
+    if len(anns) == 0:
+        return
+    sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
+    ax = plt.gca()
+    ax.set_autoscale_on(False)
+    polygons = []
+    color = []
+    for ann in sorted_anns:
+        m = ann['segmentation']
+        img = np.ones((m.shape[0], m.shape[1], 3))
+        color_mask = np.random.random((1, 3)).tolist()[0]
+        for i in range(3):
+            img[:,:,i] = color_mask[i]
+        ax.imshow(np.dstack((img, m*0.35)))
+
 # Prompting SAM with ROI
-def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, ROI: np.ndarray) -> np.ndarray:
+def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
     sam_predictor.set_image(image)
     result_masks = []
-    for box in ROI:
+    for box in xyxy:
         masks, scores, logits = sam_predictor.predict(
             box=box,
             multimask_output=True
@@ -118,13 +137,26 @@ def detect_road(image_path):
             max_area = area
             max_mask = mask
     
-    display_mask(max_mask, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    display_mask(max_mask, image_path,image)
+
+    # display_mask(max_mask, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     # write a helper function to display current mask output
 
 if __name__ == "__main__":
     image_dir = "input"
-    image_list = glob(f"{image_dir}/*.jpg") + glob(f"{image_dir}/*.png") + glob(f"{image_dir}/*.jpeg")
+    
+    print("Start =====")
+    i = 0
 
-    for image_path in image_list:
-        result = detect_road(image_path)
-        print(f"Image path: {termcolor.colored(os.path.basename(image_path), 'green')} Detected: {termcolor.colored(result, 'blue')}")
+    for filename in os.listdir(image_dir):
+        if filename.endswith(".jpg") or filename.endswith(".png") or filename.endswith(".jpeg"):
+            image_path = os.path.join(image_dir, filename)
+            output_path = os.path.join(output_dir, filename)
+
+            if not os.path.exists(output_path):
+                print("Processing: ", i)
+                i += 1
+                result = detect_road(image_path)
+                print(f"Image path: {termcolor.colored(os.path.basename(image_path), 'green')}")
+                
+                print(f"Detected: {termcolor.colored(result, 'blue')}")
