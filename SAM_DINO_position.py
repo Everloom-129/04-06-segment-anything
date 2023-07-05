@@ -55,7 +55,7 @@ def display_mask(mask, image_path,image):
 
 
     # Display the original image
-    plt.imshow(image_path)
+    plt.imshow(image)
     plt.axis('off')
 
     # Display the mask
@@ -80,6 +80,28 @@ def show_anns(anns):
         for i in range(3):
             img[:,:,i] = color_mask[i]
         ax.imshow(np.dstack((img, m*0.35)))
+
+
+# def show_anns(anns):
+#     if len(anns) == 0:
+#         print("didn't find any mask")
+#         return
+#     # Sort masks by area in descending order
+#     sorted_anns = sorted(anns, key=lambda x: x['area'], reverse=True)
+
+#     ax = plt.gca()
+#     ax.set_autoscale_on(False)
+    
+#     # Select the mask with the maximum area (the first in the sorted list)
+#     max_ann = sorted_anns[0]
+#     mask = max_ann['segmentation']
+
+#     # Prepare a gray mask for overlay
+#     gray_mask = np.ones((mask.shape[0], mask.shape[1], 3)) * 0.5  # Change the 0.5 to adjust the shade of gray
+
+#     # Overlay the gray mask onto the image
+#     ax.imshow(np.dstack((gray_mask, mask*0.35)))
+
 
 # Prompting SAM with ROI
 def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:
@@ -136,8 +158,8 @@ def detect_road(image_path):
         if area > max_area:
             max_area = area
             max_mask = mask
-    
-    display_mask(max_mask, image_path,image)
+    # print(max_mask)
+    display_mask(result_masks, image_path,image)
 
     # display_mask(max_mask, cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
     # write a helper function to display current mask output
