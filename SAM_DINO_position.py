@@ -48,60 +48,6 @@ CLASSES = ['person', 'sidewalk']
 output_dir = 'DINOmasked'
 os.makedirs(output_dir, exist_ok=True)
 
-def display_mask(mask, image_path,image):
-    # Create a new subplot
-    output_path = os.path.join(output_dir, image_path)
-    plt.figure(figsize=(16,9))
-
-
-    # Display the original image
-    plt.imshow(image)
-    plt.axis('off')
-
-    # Display the mask
-    # plt.imshow(mask, cmap='gray')
-    show_anns(mask)
-    # Display the plot
-    plt.savefig(output_path)
-    plt.close()
-
-def show_anns(anns):
-    if len(anns) == 0:
-        return
-    sorted_anns = sorted(anns, key=(lambda x: x['area']), reverse=True)
-    ax = plt.gca()
-    ax.set_autoscale_on(False)
-    polygons = []
-    color = []
-    for ann in sorted_anns:
-        m = ann['segmentation']
-        img = np.ones((m.shape[0], m.shape[1], 3))
-        color_mask = np.random.random((1, 3)).tolist()[0]
-        for i in range(3):
-            img[:,:,i] = color_mask[i]
-        ax.imshow(np.dstack((img, m*0.35)))
-
-
-# def show_anns(anns):
-#     if len(anns) == 0:
-#         print("didn't find any mask")
-#         return
-#     # Sort masks by area in descending order
-#     sorted_anns = sorted(anns, key=lambda x: x['area'], reverse=True)
-
-#     ax = plt.gca()
-#     ax.set_autoscale_on(False)
-    
-#     # Select the mask with the maximum area (the first in the sorted list)
-#     max_ann = sorted_anns[0]
-#     mask = max_ann['segmentation']
-
-#     # Prepare a gray mask for overlay
-#     gray_mask = np.ones((mask.shape[0], mask.shape[1], 3)) * 0.5  # Change the 0.5 to adjust the shade of gray
-
-#     # Overlay the gray mask onto the image
-#     ax.imshow(np.dstack((gray_mask, mask*0.35)))
-
 
 # Prompting SAM with ROI
 def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray) -> np.ndarray:

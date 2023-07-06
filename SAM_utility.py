@@ -1,3 +1,12 @@
+import os
+import cv2
+import supervision as sv
+
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+
+
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -17,3 +26,28 @@ def show_box(box, ax):
     x0, y0 = box[0], box[1]
     w, h = box[2] - box[0], box[3] - box[1]
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))    
+
+
+
+
+def display_mask(SAM_masks, image_path,output_dir,DINO_boxes):
+    # Create a new subplot
+    output_path = os.path.join(output_dir, image_path)
+    plt.figure(figsize=(16,9))
+    image = cv2.cvtColor( cv2.imread(image_path),cv2.COLOR_BGR2RGB )
+    # Display the original image
+    plt.imshow(image)
+    plt.axis('off')
+
+
+    for mask in SAM_masks:
+        show_mask(mask, plt.gca(), random_color=True)
+    for box in DINO_boxes:
+        show_box(box, plt.gca())
+
+    plt.savefig(output_path)
+    plt.close()
+
+
+
+
