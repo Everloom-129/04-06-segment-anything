@@ -90,7 +90,6 @@ def detect_road(image_path,output_path):
         box_threshold= BOX_TRESHOLD,
         text_threshold=TEXT_TRESHOLD
     )
-    detections.box_area 
 
     box_annotator = sv.BoxAnnotator()
 
@@ -98,12 +97,6 @@ def detect_road(image_path,output_path):
     f"{CLASSES[class_id]} {confidence:0.2f}" 
     for _, _, confidence, class_id, _ 
     in detections]
-
-    annotated_frame = box_annotator.annotate(scene=image.copy(), detections=detections, labels=labels)
-    # sv.plot_image(annotated_frame, (16, 16))
-
-
-    # cv2.imwrite("annotated_image.jpg", annotated_frame)
     
     # NMS post process
     nms_idx = torchvision.ops.nms(
@@ -115,6 +108,15 @@ def detect_road(image_path,output_path):
     detections.xyxy = detections.xyxy[nms_idx]
     detections.confidence = detections.confidence[nms_idx]
     detections.class_id = detections.class_id[nms_idx]
+
+
+    annotated_frame = box_annotator.annotate(scene=image.copy(), detections=detections.copy(), labels=labels)
+    # sv.plot_image(annotated_frame, (16, 16))
+
+
+    # cv2.imwrite("annotated_image.jpg", annotated_frame)
+    
+
 
     DINO_boxes = np.array(detections.xyxy)
 
