@@ -11,6 +11,7 @@ import supervision as sv
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from collections import Counter
 
 import termcolor
 import matplotlib.pyplot as plt
@@ -49,21 +50,25 @@ sam.to(device=DEVICE)
 sam_predictor = SamPredictor(sam)
 
 
-# Prompting SAM with ROI
-def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, xyxy: np.ndarray):
+# Prompting SAM with Region of Interest
+def segment_ROI(sam_predictor: SamPredictor, image: np.ndarray, boxes: np.ndarray):
     sam_predictor.set_image(image)
     result_masks = []
-    for box in xyxy:
+    for box in boxes:
         masks_np, scores_np, _ = sam_predictor.predict(
         point_coords=None,
         point_labels=None,
-        box= box,
+        box=box,
         multimask_output=True,
         )
-        index = np.argmax(scores_np)
-        result_masks.append(masks_np[index])
+        # Remove the following line to get all the person masks
+        # index = np.argmax(scores_np) 
+        # Add all masks to the result, not just the one with the highest score
+        for mask in masks_np:
+            result_masks.append(mask)
 
     return np.array(result_masks)
+
 
 def detect_road(image_path,output_path):
     try:
@@ -73,77 +78,115 @@ def detect_road(image_path,output_path):
             return None
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-
-        image_source, image2 = load_image(image_path)
     except Exception as e:
         print(f"Failed to process image at {image_path}. Error: {e}")
         return None
     
     TEXT_PROMPT = "road . sidewalk"
-    CLASSES = ['road', 'sidewalk']
-    
+    ROAD_SIDEWALK = ['road', 'sidewalk'] 
+    P_CLASS     = ['person',]
+    # the person label lower gDINO's performance
+    # so I split them
 
-    # detect objects
+    # detect road and sidewalk
     detections = grounding_dino_model.predict_with_classes(
         image=image,
-        classes = CLASSES,
+        classes = ROAD_SIDEWALK,
         box_threshold= BOX_TRESHOLD,
         text_threshold=TEXT_TRESHOLD
     )
+    detections = nms_processing(detections)
+    # detect person 
+    p_detections = grounding_dino_model.predict_with_classes(
+        image = image,
+        classes = P_CLASS , 
+        box_threshold= BOX_TRESHOLD,
+        text_threshold=TEXT_TRESHOLD
+    )
+    p_detections = nms_processing(p_detections)
 
     box_annotator = sv.BoxAnnotator()
+    person_annotator = sv.BoxAnnotator()
 
     labels = [
-    f"{CLASSES[class_id]} {confidence:0.2f}" 
-    for _, _, confidence, class_id, _ 
-    in detections]
-    
-    # NMS post process
-    nms_idx = torchvision.ops.nms(
-        torch.from_numpy(detections.xyxy), 
-        torch.from_numpy(detections.confidence), 
-        NMS_THRESHOLD
-    ).numpy().tolist()
+        f"{ROAD_SIDEWALK[class_id]} {i} {confidence:0.2f}" 
+        for i, (_, _, confidence, class_id, _) in enumerate(detections)]
 
-    detections.xyxy = detections.xyxy[nms_idx]
-    detections.confidence = detections.confidence[nms_idx]
-    detections.class_id = detections.class_id[nms_idx]
-
-
-    annotated_frame = box_annotator.annotate(scene=image.copy(), detections=detections.copy(), labels=labels)
-    # sv.plot_image(annotated_frame, (16, 16))
-
-
-    # cv2.imwrite("annotated_image.jpg", annotated_frame)
-    
-
+    P_labels = [
+        f"{P_CLASS[class_id]} {i} {confidence:0.2f}" 
+        for i, (_, _, confidence, class_id, _) in enumerate(p_detections)]
 
     DINO_boxes = np.array(detections.xyxy)
+    P_boxes    = np.array(p_detections.xyxy)
+    
+    annotated_frame = box_annotator.annotate(scene=image.copy(), detections=detections ,labels=labels)
+    if DEBUG:
+        sv.plot_image(annotated_frame, (16, 16))
+    person_annotation = person_annotator.annotate(scene=annotated_frame,detections= p_detections,labels= P_labels)
+    if DEBUG:
+        sv.plot_image(person_annotation, (16, 16))
+    # cv2.imwrite("annotated_image.jpg", annotated_frame)
+    
+    SAM_masks = segment_ROI(sam_predictor,image,DINO_boxes)
+    P_masks = segment_ROI(sam_predictor,image,DINO_boxes)
+
+    # Create a list of LocationInfo objects for each detected object
+    obj_dict = Counter()
+    
+    for i, (box, label, mask) in enumerate(zip(DINO_boxes, labels, SAM_masks)):
+        object_type, id, confidence   = label.split(' ')
+        index = object_type +id
+        obj_dict[index] =  (LocationInfo(object_type, int(id), box, mask,confidence)) 
+
+    for i, (box, label, mask) in enumerate(zip(P_boxes, P_labels, P_masks)):
+        object_type, id, confidence = label.split(' ')
+        index = object_type+id
+        obj_dict[index] = (LocationInfo(object_type, int(id), box, mask,confidence)) 
+
+    # Analyze where each person is standing
+    p_surface_overlaps = []
+
+    for name, person in obj_dict.items():
+        if person.object_type != "person":
+            continue # We only want to analyze persons
+
+        overlaps = []
+        for name, surface in obj_dict.items():
+            # We only want to analyze surfaces (road or sidewalk)
+            if surface.object_type not in ROAD_SIDEWALK: 
+                continue
+
+            # Check if the person and the surface overlap
+            overlap, _ = is_overlap(person.mask, surface.mask)
+            if overlap:
+                overlaps.append(surface)
+
+        p_surface_overlaps.append((person, overlaps))
 
 
-    SAM_masks = segment_ROI(
-        sam_predictor=sam_predictor,
-        image= image,
-        xyxy= DINO_boxes,
-    )
+    if DEBUG:
+        # Print out the analysis results
+        for person, surfaces in p_surface_overlaps:
+            if surfaces:
+                surface_str = ', '.join([f"{surface.object_type} {surface.id}" for surface in surfaces])
+                print(f"Person {person.id} is on the {surface_str}")
+            else:
+                print(f"Person {person.id} is not on any detected surface")
 
-    plt.figure(figsize=(16,9))
+    (i, j, k, d) = display_mask(SAM_masks,P_masks,P_boxes,DINO_boxes,person_annotation,output_path)
+    
+    output_dir = Path(output_path).parent
+    img_name = image_path[-4:-1]
+    txt_name = "Info_Video_"+ img_name +".txt"
+    txt_path = os.path.join(output_dir, txt_name) 
+    write_to_txt(txt_path, img_name, p_surface_overlaps, (i, j, k, d), labels, P_labels)
 
-    # Display the original image
-    plt.imshow(image)
-    plt.axis('off')
-
-
-    for mask in SAM_masks:
-        SAM_utility.show_mask(mask, plt.gca(), random_color=True)
-    for box in DINO_boxes:
-        SAM_utility.show_box(box, plt.gca())
-
-    plt.savefig(output_path)
     plt.close()
+    
+    return DINO_boxes,labels,P_labels,SAM_masks,P_masks
 
 
-    return DINO_boxes,labels
+
 
 def main():
     image_dir = Path("input")

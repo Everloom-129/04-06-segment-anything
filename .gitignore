@@ -12,6 +12,10 @@ build/
 dist/
 wheels/
 
+*.txt
+*.png
+
+
 # pytorch/python/numpy formats
 *.pth
 *.pkl
