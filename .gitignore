@@ -12,9 +12,11 @@ build/
 dist/
 wheels/
 
+# Self-defined
 *.txt
 *.png
-
+*.dfm
+*.pt
 
 # pytorch/python/numpy formats
 *.pth
