@@ -27,7 +27,10 @@ from segment_anything import sam_model_registry, SamPredictor
 from groundingdino.util.inference import load_model, load_image, predict, annotate
 
 from depth_util import predict_depth,get_distance_category
-from mask_util  import show_mask,show_points,show_box,display_mask,nms_processing,is_overlap,compute_overlap,get_location,get_surface_info
+from mask_util import (
+    show_mask, show_points, show_box, display_mask, nms_processing, 
+    is_overlap, compute_overlap, get_location, get_surface_info
+)
 from file_io    import is_image_file
 from angle_util import describe_angle,estimate_angle
 # import SAM_utility # 
