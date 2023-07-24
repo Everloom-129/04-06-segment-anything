@@ -1,5 +1,6 @@
 import torch 
 import numpy as np
+import cv2
 
 from DPT_module.dpt.models import DPTDepthModel
 from DPT_module.dpt.midas_net import MidasNet_large
