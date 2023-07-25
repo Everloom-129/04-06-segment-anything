@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
-# other library you need 
+# Need library:
+# - quick object detection? -- yolo
+# - quick object tracking?  -- ??? or high quality?
+# - depth info?
 
 # Step 1: Video Frame Extraction
 def extract_frames(video_path):
