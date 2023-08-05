@@ -1,5 +1,5 @@
-import video_processing_module
-import object_detection_module
+import utils # video_processing_module
+import detect_road # object_detection_module
 import pedestrian_intent_prediction_module
 import risk_assessment_module
 import text_generation_module
