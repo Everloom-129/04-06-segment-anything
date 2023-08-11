@@ -1,7 +1,7 @@
 import numpy as np
 
 # Get the estimated angle of each person to the dashcam
-def estimate_angle(image, person, fov_horizontal = 170):
+def estimate_angle_old(image, person, fov_horizontal = 170):
     
     # Step 1: Filter out detections that are not pedestrians
     if person.object_type!= 'person':
@@ -11,7 +11,7 @@ def estimate_angle(image, person, fov_horizontal = 170):
     box = person.box
     bottom_center = (box[0]+box[2])/2, box[3] # feet 
     
-    distance = person.distance
+    distance = person.distance # it is a string ! not real distance!!!!!! we need to improve this part
     # If the distance is a descriptive string, we need to convert it into a numerical representation
     if isinstance(distance, str):
         distance_mapping = {"very close": 1, "close": 2, "median": 3, "far": 4, "very far": 5}
@@ -33,6 +33,23 @@ def estimate_angle(image, person, fov_horizontal = 170):
     
     return np.degrees(angle)
 
+def estimate_angle(image, person):
+    if person.object_type!= 'person':
+        return None
+    box = person.box
+    bottom_center = (box[0]+box[2])/2 # feet 
+
+    feet_x = (box[0] + box[2]) / 2
+
+    # Calculate the angle based on the feet position relative to the image center
+    image_center_x = image.shape[1] / 2
+    angle = (feet_x - image_center_x) / image_center_x * 180
+    print(f"angle is {angle}")
+    return describe_angle(angle)
+
+
+    
+    return 
 def describe_angle(angle):
     """Describe the angle in simple terms."""
     if angle == None:
