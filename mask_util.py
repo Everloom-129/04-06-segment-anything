@@ -174,5 +174,4 @@ def get_surface_info(obj_dict , f):
         f.write(f"{object_type} {id} is at {location}\n")
         if obj_info.object_type == "person":
             f.write(f"The [distance,angle] from {object_type} {id} to our dashcam is: [{obj_info.distance},{obj_info.angle}]\n")
-            if DEBUG:
-                print(f"The [distance,angle] from {object_type} {id} to our dashcam is: [{obj_info.distance},{obj_info.angle}]\n")
+       
