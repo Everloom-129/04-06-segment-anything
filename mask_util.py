@@ -170,8 +170,10 @@ def get_surface_info(obj_dict , f):
         h, w = obj_info.mask.shape[-2:]
         location = get_location(bbox, (h, w)) 
         if DEBUG:
-            print(f"{object_type} {id} is at {location}")
+                print(f"{object_type} {id} is at {location}")
+
         f.write(f"{object_type} {id} is at {location}\n")
         if obj_info.object_type == "person":
-            f.write(f"The [distance,angle] from {object_type} {id} to our dashcam is: [{obj_info.distance},{obj_info.angle}]\n")
-       
+            f.write(f"The [distance,angle] of {object_type} {id} is: [{obj_info.distance},{obj_info.angle}]\n")
+        if obj_info.object_type == "vehicle":
+            f.write(f"<V> {object_type} {id} is at {obj_info.box} <VE> \n")

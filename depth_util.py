@@ -124,4 +124,4 @@ def get_distance_category(depth_map, person_mask):
         if boundaries[i] <= feet_depth < boundaries[i + 1]:
             return categories[i]
 
-    return categories[-1]  # If for some reason it wasn't caught in the loop
+    return categories[-1] # If for some reason it wasn't caught in the loop

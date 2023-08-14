@@ -44,7 +44,7 @@ def estimate_angle(image, person):
     # Calculate the angle based on the feet position relative to the image center
     image_center_x = image.shape[1] / 2
     angle = (feet_x - image_center_x) / image_center_x * 180
-    print(f"angle is {angle}")
+    # print(f"angle is {angle}")
     return describe_angle(angle)
 
 
